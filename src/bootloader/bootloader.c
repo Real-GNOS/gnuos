@@ -180,8 +180,8 @@ static UINT64 map_kernel(EFI_SYSTEM_TABLE *st, const VOID *file, UINTN size)
             UINTN pg = (UINTN)((ph->p_memsz + 0xFFF) >> 12);
             EFI_PHYSICAL_ADDRESS want = ph->p_paddr;
             EFI_STATUS ar = uefi_call_wrapper(
-                st->BootServices->AllocateAddress, 3,
-                EfiLoaderData, pg, &want);
+                st->BootServices->AllocatePages, 4,
+                AllocateAddress, EfiLoaderData, pg, &want);
             if (EFI_ERROR(ar)) {
                 raw_print(st, L"[!] AllocateAddress 0x");
                 puthex_raw(st, (UINT64)ph->p_paddr);
@@ -240,7 +240,35 @@ static BOOLEAN grab_gop(EFI_SYSTEM_TABLE *st, bootinfo_t *bi)
  *
  * GetMemoryMap 的缓冲需求在每次分配/释放后都可能变化，
  * 所以用"失败就扩大缓冲重来"的循环，直到成功。
+ *
+ * 注意：bootinfo 与快照绝不能硬编码到固定低地址——固件可能正在使用
+ * 那里（实测 OVMF 在 0x8000 附近有活数据，ExitBS 时会踩中）。
+ * 正确做法是先用 AllocateAddress 向固件预留一段页。
  */
+#define BI_BLOCK_PAGES 16          /* 64 KiB 足够 bootinfo + mmap 快照 */
+
+static bootinfo_t *reserve_bootinfo(EFI_SYSTEM_TABLE *st)
+{
+    static const UINT64 cand[] = {
+        0x80000, 0x70000, 0x60000, 0x50000, 0x40000, 0x30000, 0x20000, 0x10000
+    };
+    UINTN i;
+
+    for (i = 0; i < sizeof(cand) / sizeof(cand[0]); i++) {
+        EFI_PHYSICAL_ADDRESS a = cand[i];
+        EFI_STATUS r = uefi_call_wrapper(st->BootServices->AllocatePages, 4,
+                                         AllocateAddress, EfiLoaderData,
+                                         BI_BLOCK_PAGES, &a);
+        if (!EFI_ERROR(r)) {
+            raw_print(st, L"[m] bootinfo block @ ");
+            puthex_raw(st, (UINT64)a);
+            raw_print(st, L"\r\n");
+            return (bootinfo_t *)(UINTN)a;
+        }
+    }
+    return NULL;
+}
+
 static EFI_STATUS
 get_map_snapshot(EFI_SYSTEM_TABLE *st, bootinfo_t *bi, UINTN *key_out)
 {
@@ -253,7 +281,8 @@ get_map_snapshot(EFI_SYSTEM_TABLE *st, bootinfo_t *bi, UINTN *key_out)
     int tries = 0;
 
     for (;;) {
-        r = st->BootServices->GetMemoryMap(&size, map, &key, &dsize, &dver);
+        r = uefi_call_wrapper(st->BootServices->GetMemoryMap, 5,
+                              &size, map, &key, &dsize, &dver);
         if (!EFI_ERROR(r))
             break;
         if (r != EFI_BUFFER_TOO_SMALL || ++tries > 10)
@@ -267,13 +296,13 @@ get_map_snapshot(EFI_SYSTEM_TABLE *st, bootinfo_t *bi, UINTN *key_out)
     }
 
     /* 快照拷贝到 bootinfo 之后的固定区域（<1MiB） */
-    dst = (UINT64 *)(UINTN)(GNUCOS_BOOTINFO_ADDR + sizeof(bootinfo_t));
+    dst = (UINT64 *)(UINTN)((UINTN)bi + sizeof(bootinfo_t));
     src = (const UINT64 *)map;
     nwords = size / 8;
     for (i = 0; i < nwords; i++)
         dst[i] = src[i];
 
-    bi->mmap_addr      = GNUCOS_BOOTINFO_ADDR + sizeof(bootinfo_t);
+    bi->mmap_addr      = (UINTN)bi + sizeof(bootinfo_t);
     bi->mmap_size      = size;
     bi->mmap_desc_size = dsize;
     bi->mmap_ver       = dver;
@@ -311,31 +340,35 @@ static EFI_STATUS refresh_key(EFI_SYSTEM_TABLE *st, UINTN *key_out)
         if (!g_keybuf)
             return EFI_OUT_OF_RESOURCES;
     }
-    r = st->BootServices->GetMemoryMap(&size, g_keybuf, &key, &dsize, &dver);
+    r = uefi_call_wrapper(st->BootServices->GetMemoryMap, 5,
+                          &size, g_keybuf, &key, &dsize, &dver);
     if (!EFI_ERROR(r) && key_out)
         *key_out = key;
     return r;
 }
 
-typedef void (*kernel_entry_fn)(bootinfo_t *);
 
 EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
 {
-    bootinfo_t *bi = (bootinfo_t *)(UINTN)GNUCOS_BOOTINFO_ADDR;
+    bootinfo_t *bi;
     EFI_FILE   *f = NULL;
     VOID       *buf = NULL;
     UINTN       len = 0, key = 0;
     UINT64      entry = 0;
     EFI_STATUS  r;
-    volatile kernel_entry_fn kentry;
     int t;
 
     InitializeLib(image, st);
-
     raw_print(st, L"\r\n");
     raw_print(st, L"=================================\r\n");
-    raw_print(st, L"  gnuos bootloader 0.2  (GPLv2)\r\n");
+    raw_print(st, L"  gnuos bootloader 0.3  (GPLv2)\r\n");
     raw_print(st, L"=================================\r\n");
+
+    bi = reserve_bootinfo(st);
+    if (!bi) {
+        raw_print(st, L"[!] no low memory for bootinfo\r\n");
+        return EFI_OUT_OF_RESOURCES;
+    }
 
     if (grab_gop(st, bi))
         Print(L"  GOP: %dx%d pitch=%d fb=0x%lx\r\n",
@@ -365,14 +398,20 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     if (!entry) return EFI_LOAD_ERROR;
     bi->kernel_entry = entry;
 
+    raw_print(st, L"[m] snap-enter\r\n");
     get_map_snapshot(st, bi, &key);
+    raw_print(st, L"[m] snap-exit\r\n");
     if (!bi->mmap_addr) return EFI_LOAD_ERROR;
+    Print(L"  mmap: %d entries x %d bytes\r\n",
+          bi->mmap_size / bi->mmap_desc_size, bi->mmap_desc_size);
 
     /* 预分配最终取 key 的缓冲 */
+    raw_print(st, L"[m] keybuf...\r\n");
     if (EFI_ERROR(refresh_key(st, &key))) {
         raw_print(st, L"[!] refresh_key failed\r\n");
         return EFI_LOAD_ERROR;
     }
+    raw_print(st, L"[m] key-ok\r\n");
 
     Print(L"\r\n  entry=");
     puthex_raw(st, entry);
@@ -380,30 +419,26 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
 
     /*
      * 退出引导服务（带重试）。
-     * 注意成功后不得再调用任何 Boot Services（包括 Print）。
+     * 铁律：ExitBootServices 成功后不得再调用任何固件接口
+     * （Boot Services / ConOut / Print 全部禁止），否则行为未定义。
      */
-    r = EFI_NOT_READY;
-    for (t = 0; t < 5; t++) {
+    for (t = 0; ; t++) {
         r = refresh_key(st, &key);
-        if (EFI_ERROR(r)) {
-            raw_print(st, L"[!] key refresh failed\r\n");
+        if (EFI_ERROR(r))
             return r;
-        }
         r = uefi_call_wrapper(st->BootServices->ExitBootServices, 2,
                               image, key);
         if (!EFI_ERROR(r))
             break;
-        raw_print(st, L"  ExitBS retry\r\n");
-    }
-    if (EFI_ERROR(r)) {
-        raw_print(st, L"[!] ExitBootServices failed\r\n");
-        return r;
+        if (t >= 4) {
+            raw_print(st, L"[!] ExitBootServices failed\r\n");
+            return r;
+        }
     }
 
-    /* 跳转内核：SysV 调用约定 rdi = bootinfo */
+    /* 直接跳转内核：SysV 调用约定 rdi = bootinfo，中间不得插入任何调用 */
     __asm__ __volatile__("cli" ::: "memory");
-    kentry = (volatile kernel_entry_fn)(UINTN)entry;
-    kentry(bi);
+    ((void (*)(bootinfo_t *))(UINTN)entry)(bi);
 
     for (;;)
         __asm__ __volatile__("cli; hlt");
