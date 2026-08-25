@@ -2,7 +2,16 @@
 
 从零编写的 x86-64 Unix-like 教学操作系统。GPLv2。
 
-**与 GitHub 上的 Real-GNOS/GNOS 项目无关，仅名称形近。**
+> ## ⚠️ 免责声明（务必阅读）
+>
+> - 本项目与 GitHub 上的 **`Real-GNOS/GNOS`** **没有任何关系**：
+>   不是它的 fork、镜像、衍生或延续，未复制/引用其任何代码或文档，
+>   与其作者及关联方无任何隶属或认可关系。
+> - 项目名 "gnuos" 与 "GNOS" **仅为拼写形近**，纯属巧合；
+>   请以仓库地址 `github.com/Yinyuan34513/gnuos` 区分两者。
+> - 名称中的 "gnu" **不代表**与 GNU 计划（gnu.org）/ FSF 有任何隶属或背书关系，
+>   本项目仅采用 GPL-2.0 许可证发布。
+> - 完整声明见 [DISCLAIMER.md](DISCLAIMER.md)。
 
 ## 当前状态（step 2）
 
