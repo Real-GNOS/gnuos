@@ -1,0 +1,9 @@
+build/
+*.img
+*.iso
+*.o
+*.so
+*.elf
+VARS.fd
+serial.log
+qmp.sock*

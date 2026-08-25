@@ -1,0 +1,22 @@
+[package]
+name = "qutter"
+version = "0.1.0"
+description = "Qutter - 极简跨平台截图工具"
+edition = "2021"
+
+[lib]
+name = "qutter_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["image-png"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+xcap = "0.8"
+image = { version = "0.25", default-features = false, features = ["png"] }
+base64 = "0.22"

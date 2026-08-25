@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Qutter 主窗口权限：窗口控制、剪贴板、截图均由 Rust 侧完成，前端仅需事件监听与自定义命令",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
