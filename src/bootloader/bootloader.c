@@ -260,9 +260,6 @@ static bootinfo_t *reserve_bootinfo(EFI_SYSTEM_TABLE *st)
                                          AllocateAddress, EfiLoaderData,
                                          BI_BLOCK_PAGES, &a);
         if (!EFI_ERROR(r)) {
-            raw_print(st, L"[m] bootinfo block @ ");
-            puthex_raw(st, (UINT64)a);
-            raw_print(st, L"\r\n");
             return (bootinfo_t *)(UINTN)a;
         }
     }
@@ -398,20 +395,16 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     if (!entry) return EFI_LOAD_ERROR;
     bi->kernel_entry = entry;
 
-    raw_print(st, L"[m] snap-enter\r\n");
     get_map_snapshot(st, bi, &key);
-    raw_print(st, L"[m] snap-exit\r\n");
     if (!bi->mmap_addr) return EFI_LOAD_ERROR;
     Print(L"  mmap: %d entries x %d bytes\r\n",
           bi->mmap_size / bi->mmap_desc_size, bi->mmap_desc_size);
 
     /* 预分配最终取 key 的缓冲 */
-    raw_print(st, L"[m] keybuf...\r\n");
     if (EFI_ERROR(refresh_key(st, &key))) {
         raw_print(st, L"[!] refresh_key failed\r\n");
         return EFI_LOAD_ERROR;
     }
-    raw_print(st, L"[m] key-ok\r\n");
 
     Print(L"\r\n  entry=");
     puthex_raw(st, entry);
