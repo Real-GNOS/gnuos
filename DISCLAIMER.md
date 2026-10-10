@@ -2,17 +2,23 @@
 
 > **中文（以中文为准）**
 
-## 1. 独立原创声明
+## 1. 同宗同源声明
 
-本仓库 `Yinyuan34513/gnuos`（下称"本项目"）是一个**独立、原创、从零开始**编写的
-教学性操作系统项目。本项目：
+本仓库 `Real-GNOS/gnuos`（原 `Yinyuan34513/gnuos`）与 `Real-GNOS/GNOS`、
+`Real-GNOS/gnos-birth` **同宗同源**，均出自同一作者：
 
-- **不是** GitHub 上 `Real-GNOS/GNOS` 仓库（下称"GNOS 项目"）的分支（fork）、
-  复刻（clone/镜像）、衍生作品或延续；
-- **未复制、未引用、未翻译** GNOS 项目的任何源代码、文档、图片或其他内容；
-- 与 GNOS 项目及其作者、贡献者、关联账号**没有任何隶属、合作、授权或认可关系**；
-- 项目名称 "gnuos" 与 "GNOS" **仅为拼写形近**，纯属命名巧合，如有混淆，
-  请以本仓库地址（`github.com/Yinyuan34513/gnuos`）为准区分两者。
+- 代码源头是 2026-08-09 的出生会话（完整实录见 `Real-GNOS/gnos-birth` 的
+  `docs/01-birth-session-2026-08-09.md`）：从"写一个基础的 Unix-like 操作系统，
+  先从第 1 步开始 (qemu)"起步，当天产出 step2（自研 UEFI 引导管理器 +
+  x86-64 内核）。
+- 本仓库是该阶段代码的**中文注释版**（2026-08-25 建仓）。仓库内的
+  `conv.txt`、`conversation-2026-08-25.txt`、`conversation-20d26-08-25.txt`、
+  `session-ses_fde4.md` 即上述会话实录的副本，与 `Real-GNOS/gnos-birth`
+  的 `docs/02`–`docs/04` 及开发会话档案同源（逐字节相同）。
+- `Real-GNOS/GNOS` 是同一代码流的后续主线演进（英文注释，持续开发至今）。
+- **撤回说明**：本仓库 2026-08-25 提交 `9a3d4cf` 中的旧版免责声明声称本项目与
+  GNOS"没有任何关系""未复制、未引用、未翻译其任何代码或文档"，该表述
+  **与事实不符，自本版起废止**。旧版仅留存于 git 历史，不代表本项目立场。
 
 ## 2. 与 GNU 计划的关系
 
@@ -36,15 +42,19 @@
 
 > **English (for reference only; the Chinese text above prevails)**
 
-`Yinyuan34513/gnuos` ("this project") is an **independent, original, from-scratch**
-educational operating system project. It is **NOT** a fork, mirror, derivative, or
-continuation of the GitHub repository `Real-GNOS/GNOS`; no source code,
-documentation, or other content from that project has been copied, quoted, or
-translated. This project has no affiliation, cooperation, endorsement, or approval
-relationship with that project or its authors. The similarity between the names
-"gnuos" and "GNOS" is purely coincidental. The word "gnu" in the project name does
-NOT imply any affiliation with or endorsement by the GNU Project (gnu.org) or the
-FSF; the project merely uses the GNU GPL v2 license. Third-party components
-(QEMU, OVMF/EDK II, gnu-efi, Linux kernel font, etc.) are used only under their
+`Real-GNOS/gnuos` (formerly `Yinyuan34513/gnuos`) shares a **common origin**
+with `Real-GNOS/GNOS` and `Real-GNOS/gnos-birth`: all three come from the same
+author, and their code descends from the same birth session of 2026-08-09
+(transcripts archived in `Real-GNOS/gnos-birth`). This repository is the
+Chinese-commented snapshot of that session's step-2 output (created 2026-08-25);
+the conversation files it ships are verbatim copies of the session archives.
+`Real-GNOS/GNOS` is the continued mainline of the same code. The earlier
+disclaimer in commit `9a3d4cf` — which denied any relationship with GNOS and
+denied copying any of its code or documentation — was factually incorrect and
+is hereby retracted; it remains only in git history and does not represent this
+project's position. The word "gnu" in the project name does NOT imply any
+affiliation with or endorsement by the GNU Project (gnu.org) or the FSF; the
+project merely uses the GNU GPL v2 license. Third-party components (QEMU,
+OVMF/EDK II, gnu-efi, Linux kernel font, etc.) are used only under their
 respective licenses. This project is provided "as is" for educational purposes;
 the author assumes no liability for any damage or data loss arising from its use.
